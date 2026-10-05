@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TP-III — Heurística + Exato (Mochila 0/1)</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Outfit:wght@600;700&family=Fira+Code&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <div class="brand">🎒 Mochila 0/1 · Heurística + Exato</div>
+  <nav>
+    <button class="active" data-t="v-slides">Apresentação</button>
+    <button data-t="v-results">Resultados</button>
+    <button data-t="v-method">Metodologia</button>
+  </nav>
+</header>
+
+<section id="v-slides" class="view active">
+  <div class="slide">
+    <span class="tag">TP-III · Otimização Combinatória</span>
+    <h1>Combinando heurística e método exato na Mochila 0/1</h1>
+    <p>Warm start + Fix-and-Optimize sobre o HiGHS, comparados com a Busca Tabu pura e com o exato puro, sob o mesmo orçamento de tempo, com N crescendo de 25 a 800 itens.</p>
+    <div class="grid g4" style="margin-top:1.5rem">
+      <div class="card"><div class="kpi">6<small>tamanhos (25 → 800)</small></div></div>
+      <div class="card"><div class="kpi">3<small>réplicas por tamanho</small></div></div>
+      <div class="card"><div class="kpi">4<small>abordagens comparadas</small></div></div>
+      <div class="card"><div class="kpi">20 s<small>orçamento T idêntico</small></div></div>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h2>Problema e instâncias</h2>
+    <div class="grid g2">
+      <div class="card"><h3>Mochila 0/1</h3><p>max Σ pᵢxᵢ  s.a. Σ wᵢxᵢ ≤ C,  x ∈ {0,1}ⁿ</p>
+        <p>Mesmo problema do TP-I (Busca Tabu + AG); aqui reaproveitamos a Busca Tabu.</p></div>
+      <div class="card"><h3>Gerador parametrizado por N</h3>
+        <ul><li>wᵢ ~ U{1..100000}, pᵢ = wᵢ + 10000 (<b>fortemente correlacionada</b>)</li>
+        <li>C = ⌊0,5·Σw⌋</li><li>seed = 2026 + 1000·réplica + N</li><li>N ∈ {25, 50, 100, 200, 400, 800}</li></ul></div>
+    </div>
+    <p style="margin-top:1rem">Por quê esse tipo? Com p/w quase constante, o limite LP é fraco e a poda do branch-and-bound é ruim: é a família clássica que faz o exato sofrer.</p>
+  </div>
+
+  <div class="slide">
+    <h2>As 4 abordagens (mesmo T = 20 s)</h2>
+    <div class="grid g2">
+      <div class="card"><h3 style="color:var(--purple)">1. Heurística pura</h3><p>Busca Tabu (flip + swap, tenure ≈ √n, aspiração, diversificação) usando todo o T.</p></div>
+      <div class="card"><h3 style="color:var(--red)">2. Exato puro</h3><p>MIP no HiGHS 1.15 (branch-and-cut), 1 thread, prova de ótimo (gap abs. &lt; 1).</p></div>
+      <div class="card"><h3 style="color:var(--amber)">3. Exato + warm start</h3><p>Tabu por 10 % de T → solução injetada como incumbente → exato no resto. Isola o efeito do warm start.</p></div>
+      <div class="card"><h3>4. Híbrido</h3><p>Warm start (10 %) → <b>Fix-and-Optimize</b> (até 40 %) → exato completo com o melhor incumbente.</p></div>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h2>Fix-and-Optimize: a decisão de projeto</h2>
+    <p>Quem fica livre? Usamos o <b>preço-sombra λ</b> da capacidade na relaxação linear e o ranking de <b>|pᵢ − λ·wᵢ|</b> (custo reduzido): itens perto de 0 são os "incertos" da relaxação.</p>
+    <ul>
+      <li>Janela deslizante de K itens no ranking → subproblema MIP reduzido (capacidade residual) resolvido exatamente.</li>
+      <li>K adaptativo: ×1,25 se o subproblema fecha rápido; ×0,7 se estoura o limite (2 s).</li>
+      <li>Para quando varre tudo sem melhora, devolvendo tempo ao exato.</li>
+      <li>Ablação: <b>rc</b> (custo reduzido) × <b>aleatório</b> × <b>mix</b>.</li>
+    </ul>
+  </div>
+
+  <div class="slide">
+    <h2>Resultado 1 — Quem fecha o gap?</h2>
+    <img class="fig" src="figures/fig2_otimo_provado.png" alt="Ótimo provado">
+    <p><b>O exato prova o ótimo em 3/3 réplicas até N = 200.</b> Em N = 400 só 1/3 (e só o exato puro); em N = 800, 0/3. A transição está entre 200 e 400.</p>
+  </div>
+
+  <div class="slide">
+    <h2>Resultado 2 — Qualidade da solução</h2>
+    <div class="grid g2"><img class="fig" src="figures/fig1_gap_vs_N.png" alt="Gap"><img class="fig" src="figures/fig6_gap_primal_ppm.png" alt="Gap primal"></div>
+    <p>O gap relativo ao limite dual (esq.) em 400/800 (~0,03 %) é do <b>limite</b>, não da solução: o gap primal (dir.) da heurística é ≤ 0,5 ppm. Todas as abordagens acham a mesma solução em quase todas as instâncias.</p>
+  </div>
+
+  <div class="slide">
+    <h2>Resultado 3 — Convergência e custo</h2>
+    <img class="fig" src="figures/fig4_anytime.png" alt="Anytime">
+    <p>O incumbente já nasce praticamente ótimo no warm start; o que o tempo extra compra é <i>prova</i>, não solução melhor.</p>
+  </div>
+
+  <div class="slide">
+    <h2>Respostas às perguntas</h2>
+    <div class="grid g2">
+      <div class="card"><h3>Onde o exato deixa de fechar?</h3><p>Entre N = 200 (3/3) e N = 400 (1/3) com T = 20 s.</p></div>
+      <div class="card"><h3>O híbrido empurra o limite?</h3><p><b>Não, neste problema.</b> Em N = 400 o híbrido provou 0/3 (o exato puro provou 1/3). Ganho: 0 tamanhos.</p></div>
+      <div class="card"><h3>A heurística já iguala o híbrido?</h3><p>Sim em solução: gap primal ≤ 0,5 ppm desde N = 25. O híbrido só acrescenta a <i>certeza</i> (limite dual) até N = 200.</p></div>
+      <div class="card"><h3>A estratégia acelerou o solver?</h3><p>Warm start: o exato prova o ótimo em ~0,02 s após receber o incumbente em 2 das 3 réplicas de N = 200 (1,2 s na outra), mas os 2 s do warm start custam mais que o exato puro (1,2–4,4 s) economiza. Fix-and-Optimize: 0–2 melhorias por execução, mínimas (ex.: +1 unidade de lucro em N = 400).</p></div>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h2>Por quê? (nossa leitura)</h2>
+    <ul>
+      <li><b>Uma só restrição:</b> a Busca Tabu é muito forte; o incumbente inicial já está a ≤ 0,5 ppm do ótimo (medido na heurística pura), então não sobra espaço para o F&amp;O melhorar.</li>
+      <li><b>O gargalo é o limite dual</b>, e Fix-and-Optimize só mexe no limite primal.</li>
+      <li>O warm start custa tempo fixo (2 s): em N ≤ 100 o exato puro (&lt; 0,4 s) ganha.</li>
+      <li>Ablação: as três vizinhanças (rc, aleatório, mix) tiveram resultado idêntico, pois não há melhora a achar.</li>
+    </ul>
+    <p class="warn">Limites do estudo: 1 thread, HiGHS (não CPLEX/Gurobi), 3 réplicas, T = 20 s.</p>
+  </div>
+  <div class="ctrl"><button id="prev">←</button><span id="pos"></span><button id="next">→</button></div>
+</section>
+
+<section id="v-results" class="view">
+  <h2>Resultados (média de 3 réplicas, T = 20 s)</h2>
+  <div class="card"><table id="tbl"><thead><tr><th>N</th><th>Método</th><th>Ótimo provado</th><th>Tempo (s)</th><th>Gap vs UB (%)</th><th>Gap primal (ppm)</th></tr></thead><tbody></tbody></table></div>
+  <div class="grid g2" style="margin-top:1rem"><img class="fig" src="figures/fig3_tempo_prova.png" alt=""><img class="fig" src="figures/fig5_ablacao_fo.png" alt=""></div>
+</section>
+
+<section id="v-method" class="view">
+  <h2>Metodologia</h2>
+  <div class="card"><ul>
+    <li>Mesmo orçamento T = 20 s de relógio por abordagem; o tempo do warm start e do F&amp;O está dentro de T.</li>
+    <li>UB de referência por instância = menor limite dual provado entre as execuções e o limite de Dantzig.</li>
+    <li>"Fecha o gap" = HiGHS devolve status Optimal (gap absoluto &lt; 1, lucros inteiros).</li>
+    <li>Reprodução: <code>pip install -r requirements.txt && python run_experiments.py && python analyze.py</code></li>
+  </ul></div>
+</section>
+<script src="app.js"></script>
+</body>
+</html>
