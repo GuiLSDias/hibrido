@@ -1,0 +1,91 @@
+N=10 r=0 heuristica       cores= 4 LB=4.00 prova=False t=0.000s
+N=10 r=0 exato            cores= 4 LB=4.00 prova=True t=0.012s
+N=10 r=0 exato+warm       cores= 4 LB=4.00 prova=True t=0.005s
+N=10 r=0 hibrido          cores= 4 LB=4.00 prova=True t=0.014s
+N=10 r=1 heuristica       cores= 4 LB=4.00 prova=False t=0.000s
+N=10 r=1 exato            cores= 4 LB=4.00 prova=True t=0.008s
+N=10 r=1 exato+warm       cores= 4 LB=4.00 prova=True t=0.002s
+N=10 r=1 hibrido          cores= 4 LB=4.00 prova=True t=0.009s
+N=10 r=2 heuristica       cores= 4 LB=4.00 prova=False t=0.000s
+N=10 r=2 exato            cores= 4 LB=4.00 prova=True t=0.002s
+N=10 r=2 exato+warm       cores= 4 LB=4.00 prova=True t=0.002s
+N=10 r=2 hibrido          cores= 4 LB=4.00 prova=True t=0.010s
+N=15 r=0 heuristica       cores= 5 LB=5.00 prova=False t=0.000s
+N=15 r=0 exato            cores= 5 LB=5.00 prova=True t=0.008s
+N=15 r=0 exato+warm       cores= 5 LB=5.00 prova=True t=0.004s
+N=15 r=0 hibrido          cores= 5 LB=5.00 prova=True t=0.016s
+N=15 r=1 heuristica       cores= 5 LB=5.00 prova=False t=0.000s
+N=15 r=1 exato            cores= 5 LB=5.00 prova=True t=0.009s
+N=15 r=1 exato+warm       cores= 5 LB=5.00 prova=True t=0.005s
+N=15 r=1 hibrido          cores= 5 LB=5.00 prova=True t=0.019s
+N=15 r=2 heuristica       cores= 5 LB=5.00 prova=False t=0.001s
+N=15 r=2 exato            cores= 5 LB=5.00 prova=True t=0.011s
+N=15 r=2 exato+warm       cores= 5 LB=5.00 prova=True t=0.005s
+N=15 r=2 hibrido          cores= 5 LB=5.00 prova=True t=0.016s
+N=20 r=0 heuristica       cores= 5 LB=5.00 prova=False t=0.000s
+N=20 r=0 exato            cores= 5 LB=5.00 prova=True t=0.004s
+N=20 r=0 exato+warm       cores= 5 LB=5.00 prova=True t=0.005s
+N=20 r=0 hibrido          cores= 5 LB=5.00 prova=True t=0.020s
+N=20 r=1 heuristica       cores= 6 LB=5.00 prova=False t=20.000s
+N=20 r=1 exato            cores= 6 LB=6.00 prova=True t=0.024s
+N=20 r=1 exato+warm       cores= 6 LB=6.00 prova=True t=2.016s
+N=20 r=1 hibrido          cores= 6 LB=6.00 prova=True t=2.038s
+N=20 r=2 heuristica       cores= 6 LB=5.00 prova=False t=20.000s
+N=20 r=2 exato            cores= 6 LB=6.00 prova=True t=0.204s
+N=20 r=2 exato+warm       cores= 6 LB=6.00 prova=True t=2.329s
+N=20 r=2 hibrido          cores= 6 LB=6.00 prova=True t=2.287s
+N=30 r=0 heuristica       cores= 7 LB=6.00 prova=False t=20.000s
+N=30 r=0 exato            cores= 7 LB=7.00 prova=True t=0.052s
+N=30 r=0 exato+warm       cores= 7 LB=7.00 prova=True t=2.198s
+N=30 r=0 hibrido          cores= 7 LB=7.00 prova=True t=2.239s
+N=30 r=0 hibrido_random   cores= 7 LB=7.00 prova=True t=2.250s
+N=30 r=0 hibrido_mix      cores= 7 LB=7.00 prova=True t=2.232s
+N=30 r=1 heuristica       cores= 7 LB=6.00 prova=False t=20.000s
+N=30 r=1 exato            cores= 7 LB=7.00 prova=True t=1.456s
+N=30 r=1 exato+warm       cores= 7 LB=7.00 prova=True t=3.090s
+N=30 r=1 hibrido          cores= 7 LB=7.00 prova=True t=3.051s
+N=30 r=1 hibrido_random   cores= 7 LB=7.00 prova=True t=3.127s
+N=30 r=1 hibrido_mix      cores= 7 LB=7.00 prova=True t=2.995s
+N=30 r=2 heuristica       cores= 7 LB=6.00 prova=False t=20.000s
+N=30 r=2 exato            cores= 7 LB=7.00 prova=True t=0.444s
+N=30 r=2 exato+warm       cores= 7 LB=7.00 prova=True t=2.349s
+N=30 r=2 hibrido          cores= 7 LB=7.00 prova=True t=2.444s
+N=30 r=2 hibrido_random   cores= 7 LB=7.00 prova=True t=2.413s
+N=30 r=2 hibrido_mix      cores= 7 LB=7.00 prova=True t=2.421s
+N=40 r=0 heuristica       cores= 8 LB=7.00 prova=False t=20.000s
+N=40 r=0 exato            cores= 8 LB=8.00 prova=True t=2.987s
+N=40 r=0 exato+warm       cores= 8 LB=8.00 prova=True t=6.121s
+N=40 r=0 hibrido          cores= 8 LB=8.00 prova=True t=6.251s
+N=40 r=0 hibrido_random   cores= 8 LB=8.00 prova=True t=6.257s
+N=40 r=0 hibrido_mix      cores= 8 LB=8.00 prova=True t=6.259s
+N=40 r=1 heuristica       cores= 9 LB=8.00 prova=False t=20.000s
+N=40 r=1 exato            cores= 9 LB=9.00 prova=True t=8.140s
+N=40 r=1 exato+warm       cores= 9 LB=9.00 prova=True t=12.812s
+N=40 r=1 hibrido          cores= 9 LB=9.00 prova=True t=11.821s
+N=40 r=1 hibrido_random   cores= 9 LB=9.00 prova=True t=13.240s
+N=40 r=1 hibrido_mix      cores= 9 LB=9.00 prova=True t=12.372s
+N=40 r=2 heuristica       cores= 8 LB=7.00 prova=False t=20.000s
+N=40 r=2 exato            cores= 8 LB=8.00 prova=True t=13.675s
+N=40 r=2 exato+warm       cores= 8 LB=8.00 prova=True t=5.377s
+N=40 r=2 hibrido          cores= 8 LB=8.00 prova=True t=5.093s
+N=40 r=2 hibrido_random   cores= 8 LB=8.00 prova=True t=4.849s
+N=40 r=2 hibrido_mix      cores= 8 LB=8.00 prova=True t=4.909s
+N=60 r=0 heuristica       cores=11 LB=9.00 prova=False t=20.000s
+N=60 r=0 exato            cores=13 LB=9.00 prova=False t=20.004s
+N=60 r=0 exato+warm       cores=11 LB=9.00 prova=False t=20.006s
+N=60 r=0 hibrido          cores=11 LB=9.00 prova=False t=20.006s
+N=60 r=0 hibrido_random   cores=11 LB=9.00 prova=False t=20.005s
+N=60 r=0 hibrido_mix      cores=11 LB=9.00 prova=False t=20.007s
+N=60 r=1 heuristica       cores=10 LB=8.00 prova=False t=20.000s
+N=60 r=1 exato            cores=12 LB=8.00 prova=False t=20.007s
+N=60 r=1 exato+warm       cores=10 LB=8.00 prova=False t=20.019s
+N=60 r=1 hibrido          cores=10 LB=8.00 prova=False t=20.005s
+N=60 r=1 hibrido_random   cores=10 LB=8.00 prova=False t=20.007s
+N=60 r=1 hibrido_mix      cores=10 LB=8.00 prova=False t=20.005s
+N=60 r=2 heuristica       cores=11 LB=8.00 prova=False t=20.000s
+N=60 r=2 exato            cores=12 LB=8.00 prova=False t=20.008s
+N=60 r=2 exato+warm       cores=11 LB=8.00 prova=False t=20.004s
+N=60 r=2 hibrido          cores=11 LB=8.00 prova=False t=20.007s
+N=60 r=2 hibrido_random   cores=11 LB=8.00 prova=False t=20.017s
+N=60 r=2 hibrido_mix      cores=11 LB=8.00 prova=False t=20.007s
+Experimentos concluídos.

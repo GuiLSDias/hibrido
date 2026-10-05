@@ -1,75 +1,71 @@
-"""Busca Tabu (adaptada do TP-I em JS) para a Mochila 0/1, com avaliação incremental O(1) por movimento.
-
-Vizinhança: flip (insere/remove) + swap 1-1 (item dentro <-> item fora), com viabilidade mantida
-(movimentos que estouram C são descartados -> sem reparo). Tenure dinâmico ~ sqrt(n),
-aspiração por valor, diversificação por perturbação da melhor solução após estagnação.
-O swap é avaliado de forma vetorizada (numpy) sobre a matriz in x out.
+"""Busca Tabu para coloração: tenta k-1 cores minimizando conflitos (TabuCol).
+Soluções intermediárias podem ter conflitos; só retorna colorações válidas.
 """
+import time
 import numpy as np
-from .common import greedy, evaluate, Clock
+from .common import dsatur, normalize, valid, objective, record, clique_bound
 
 
-def tabu_search(inst, time_limit, x0=None, seed=0, stag_limit=None, verbose=False):
+def tabu_search(inst, time_limit, seed=1, trace=None, origin=None):
+    start = time.perf_counter()
+    deadline = start + max(0, time_limit)
+    origin = start if origin is None else origin
+    trace = [] if trace is None else trace
     rng = np.random.default_rng(seed)
-    n, w, p, C = inst["n"], inst["w"], inst["p"], inst["C"]
-    clk = Clock(time_limit)
-    x = (greedy(inst) if x0 is None else x0.copy()).astype(np.int8)
-    val, wt = evaluate(inst, x)
-    best_x, best_val = x.copy(), val
-    tabu_until = np.zeros(n, dtype=np.int64)
-    it = 0; last_imp = 0
-    stag_limit = stag_limit or max(100, 3 * n)
-    tenure = max(5, int(np.sqrt(n)))
-    ratio = p / w
-    while clk.left() > 0:
-        it += 1
-        ins = np.where(x == 1)[0]; out = np.where(x == 0)[0]
-        cand_val = -np.inf; mv = None
-        # --- flip: inserir item fora que ainda cabe
-        if len(out):
-            fit = out[wt + w[out] <= C]
-            if len(fit):
-                nv = val + p[fit]
-                ok = (tabu_until[fit] <= it) | (nv > best_val)
-                if ok.any():
-                    k = np.argmax(np.where(ok, nv, -np.inf)); cand_val = nv[k]; mv = ("add", fit[k], -1)
-        # --- swap 1-1 (vetorizado)
-        if len(ins) and len(out):
-            dw = w[out][None, :] - w[ins][:, None]                  # (|ins|, |out|)
-            feas = wt + dw <= C
-            dv = p[out][None, :] - p[ins][:, None]
-            nv = val + dv
-            allowed = ((tabu_until[ins][:, None] <= it) & (tabu_until[out][None, :] <= it)) | (nv > best_val)
-            sc = np.where(feas & allowed, nv, -np.inf)
-            idx = np.argmax(sc); a, b = divmod(idx, len(out))
-            if sc[a, b] > cand_val:
-                cand_val = sc[a, b]; mv = ("swap", ins[a], out[b])
-        # --- remoção (escape) se nada viável
-        if mv is None:
-            if len(ins):
-                j = ins[np.argmin(ratio[ins])]; mv = ("drop", j, -1); cand_val = val - p[j]
-            else:
-                break
-        kind, i, j = mv
-        if kind == "add":
-            x[i] = 1; wt += w[i]; tabu_until[i] = it + tenure + rng.integers(0, tenure)
-        elif kind == "drop":
-            x[i] = 0; wt -= w[i]; tabu_until[i] = it + tenure + rng.integers(0, tenure)
-        else:
-            x[i] = 0; x[j] = 1; wt += w[j] - w[i]
-            tabu_until[i] = it + tenure + rng.integers(0, tenure)
-            tabu_until[j] = it + tenure // 2
-        val = int(cand_val)
-        if val > best_val:
-            best_val, best_x, last_imp = val, x.copy(), it
-        # --- diversificação
-        if it - last_imp > stag_limit:
-            x = best_x.copy()
-            ins = np.where(x == 1)[0]
-            k = max(2, len(ins) // 10)
-            for r in rng.choice(ins, size=min(k, len(ins)), replace=False): x[r] = 0
-            wt = int(w @ x)
-            for r in rng.permutation(np.where(x == 0)[0]):       # reenche aleatoriamente
-                if wt + w[r] <= C: x[r] = 1; wt += w[r]
-            val = int(p @ x); last_imp = it; tabu_until[:] = 0
-    return best_x, int(best_val), {"iters": it, "time": clk.elapsed()}
+    best = dsatur(inst, rng)
+    record(trace, origin, best, 'tabu')
+    lb, _ = clique_bound(inst)
+    iterations = restarts = 0
+    while time.perf_counter() < deadline and objective(best) > lb:
+        k = objective(best) - 1
+        # Remove a menor classe; os seus vértices geram o estado conflituoso inicial.
+        classes = [np.flatnonzero(best == c) for c in range(k + 1)]
+        removed = min(range(k + 1), key=lambda c: len(classes[c]))
+        order = [c for c in range(k + 1) if c != removed]
+        mapping = {c: i for i, c in enumerate(order)}
+        colors = np.array([mapping.get(int(c), -1) for c in best])
+        for v in classes[removed]:
+            counts = np.bincount(colors[inst['adj'][v]][colors[inst['adj'][v]] >= 0], minlength=k)
+            choices = np.flatnonzero(counts == counts.min())
+            colors[v] = int(rng.choice(choices))
+        counts = np.zeros((inst['n'], k), dtype=int)
+        for v in range(inst['n']):
+            counts[v] = np.bincount(colors[inst['adj'][v]], minlength=k)
+        conflicts = sum(colors[u] == colors[v] for u, v in inst['edges'])
+        tabu = np.zeros_like(counts)
+        local_best, stagnant, it = conflicts, 0, 0
+        while conflicts and time.perf_counter() < deadline:
+            conflicted = np.flatnonzero(counts[np.arange(inst['n']), colors] > 0)
+            delta = counts[conflicted] - counts[conflicted, colors[conflicted]][:, None]
+            allowed = (tabu[conflicted] <= it) | (conflicts + delta < local_best)
+            allowed[np.arange(len(conflicted)), colors[conflicted]] = False
+            score = np.where(allowed, delta, 10**9)
+            choices = np.argwhere(score == score.min())
+            if score.min() == 10**9:
+                # Não há movimento permitido: avança até expirar uma proibição.
+                it = int(tabu[conflicted].min()) + it + 1
+                continue
+            row, new = choices[int(rng.integers(len(choices)))]
+            v = int(conflicted[row]); new = int(new); old = int(colors[v])
+            conflicts += int(delta[row, new])
+            colors[v] = new
+            counts[inst['adj'][v], old] -= 1
+            counts[inst['adj'][v], new] += 1
+            tabu[v, old] = it + int(0.6 * len(conflicted)) + int(rng.integers(4, 11))
+            it += 1; iterations += 1; stagnant += 1
+            if conflicts < local_best:
+                local_best = conflicts; stagnant = 0
+            if stagnant >= max(200, 20 * inst['n']):
+                restarts += 1
+                break  # Diversificação: novo desempate/reinicialização da menor classe.
+        if conflicts == 0:
+            candidate = normalize(colors)
+            assert valid(inst, candidate)
+            best = candidate
+            record(trace, origin, best, 'tabu')
+        elif time.perf_counter() < deadline:
+            candidate = dsatur(inst, rng)
+            if objective(candidate) < objective(best):
+                best = candidate; record(trace, origin, best, 'tabu')
+    return {'colors': best, 'obj': objective(best), 'trace': trace,
+            'time': time.perf_counter() - start, 'iterations': iterations, 'restarts': restarts}

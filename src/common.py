@@ -1,37 +1,60 @@
-import time
+"""Operações comuns; não compartilha incumbentes entre abordagens."""
 import numpy as np
 
 
-def evaluate(inst, x):
-    return int(inst["p"] @ x), int(inst["w"] @ x)
+def normalize(colors):
+    mapping = {}
+    return np.array([mapping.setdefault(int(c), len(mapping)) for c in colors], dtype=int)
 
 
-def dantzig_bound(inst):
-    """Limite superior LP (relaxação linear da mochila, solução gulosa fracionária)."""
-    w, p, C = inst["w"], inst["p"], inst["C"]
-    order = np.argsort(-(p / w), kind="stable")
-    cap, val = C, 0.0
-    for i in order:
-        if w[i] <= cap:
-            cap -= w[i]; val += p[i]
-        else:
-            val += p[i] * cap / w[i]; break
-    return val
+def valid(inst, colors):
+    if colors is None or len(colors) != inst['n']:
+        return False
+    a = np.asarray(colors)
+    return bool(np.all(a >= 0) and np.all(a == a.astype(int)) and
+                all(a[u] != a[v] for u, v in inst['edges']))
 
 
-def greedy(inst):
-    """Guloso por razão p/w (mesma semente inicial do TP-I)."""
-    w, p, C = inst["w"], inst["p"], inst["C"]
-    order = np.argsort(-(p / w), kind="stable")
-    x = np.zeros(inst["n"], dtype=np.int8); cap = C
-    for i in order:                       # continua após o primeiro que não cabe (preenche folgas)
-        if w[i] <= cap:
-            x[i] = 1; cap -= w[i]
-    return x
+def objective(colors):
+    return len(set(map(int, colors)))
 
 
-class Clock:
-    def __init__(self, limit):
-        self.t0 = time.perf_counter(); self.limit = limit
-    def elapsed(self): return time.perf_counter() - self.t0
-    def left(self): return self.limit - self.elapsed()
+def dsatur(inst, rng=None):
+    """DSATUR: saturação, grau e desempate determinístico/aleatório."""
+    n, adj = inst['n'], inst['adj']
+    colors = np.full(n, -1, dtype=int)
+    sat = [set() for _ in range(n)]
+    remaining = set(range(n))
+    tie = np.arange(n)[::-1] if rng is None else rng.random(n)
+    while remaining:
+        v = max(remaining, key=lambda v: (len(sat[v]), len(adj[v]), tie[v]))
+        c = 0
+        while c in sat[v]:
+            c += 1
+        colors[v] = c
+        remaining.remove(v)
+        for u in adj[v]:
+            sat[u].add(c)
+    return normalize(colors)
+
+
+def clique_bound(inst):
+    """Clique gulosa multi-início: limite inferior válido, não clique máxima."""
+    adj = [set(a) for a in inst['adj']]
+    best = []
+    for start in sorted(range(inst['n']), key=lambda v: (-len(adj[v]), v)):
+        clique, candidates = [start], set(adj[start])
+        while candidates:
+            v = max(candidates, key=lambda u: (len(candidates & adj[u]), len(adj[u]), -u))
+            clique.append(v)
+            candidates &= adj[v]
+        if len(clique) > len(best):
+            best = clique
+    return max(1, len(best)), list(map(int, best))
+
+
+def record(trace, origin, colors, phase):
+    import time
+    value = objective(colors)
+    if not trace or value < trace[-1]['cores']:
+        trace.append({'t': time.perf_counter() - origin, 'cores': value, 'fase': phase})

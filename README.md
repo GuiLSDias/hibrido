@@ -1,103 +1,152 @@
-# TP-III — Heurística + Método Exato (Mochila 0/1)
+# TP-III — Busca Tabu + HiGHS na Coloração de Grafos
 
-Hibridização da **Busca Tabu** (TP-I, portada de JavaScript para Python) com **branch-and-cut (HiGHS)** na **Mochila 0/1**, usando **warm start** e **Fix-and-Optimize**, comparada com a heurística pura e o exato puro sob o mesmo orçamento de tempo.
+Versão corrigida do projeto híbrido. Mantém o **problema do TP-II do grupo: coloração mínima de grafos**, aplicado ao agendamento de provas. A Busca Tabu do TP-I é reaproveitada como ideia e adaptada para recoloração de vértices. O modelo inteiro preserva as variáveis `x[v,c]` e `y[c]` do TP-II.
 
-> **Premissa:** assumi que o problema do TP-II é a Mochila 0/1, o mesmo do `heuristica.zip` (TP-I). Se o grupo usou outro problema, o gerador, a heurística e o modelo MIP precisam ser adaptados.
-> Do TP-I foi portada apenas a Busca Tabu; o Algoritmo Genético não foi usado.
+O pacote contém código executável, instâncias completas, resultados reais, colorações válidas, gráficos, relatório e apresentação HTML offline. Os resultados são específicos do ambiente registrado em `results.json`.
+
+## Comece aqui
+
+1. Extraia o ZIP e abra `index.html` no navegador: apresentação, resultados e metodologia. Use as setas ← → e o botão de tela cheia.
+2. Leia `RELATORIO.md` para as respostas baseadas nos resultados.
+3. Leia `ROTEIRO.md` para estudar a apresentação.
+4. Para executar, instale Python 3.10 ou superior e as dependências:
+
+```bash
+python -m venv .venv
+# Windows: .venv\Scripts\activate
+# Linux/macOS: source .venv/bin/activate
+python -m pip install -r requirements.txt
+python -m unittest discover -s tests -v
+python run_experiments.py --T 20 --reps 3
+python validate_results.py
+python analyze.py
+```
+
+A execução completa leva vários minutos; cada abordagem tem limite de até 20 s por grafo e pode encerrar antes. Execute os comandos na pasta do projeto. Para preservar os resultados entregues durante novos testes, use uma pasta de saída:
+
+```bash
+python run_experiments.py --T 5 --reps 1 --sizes 10 20 30 --ablation-sizes 30 --out teste
+python analyze.py --out teste
+```
+
+A análise grava dados e figuras na pasta de saída. Para usar a apresentação nessa pasta, copie `index.html`, `style.css` e `app.js` para ela.
+
+## Atendimento aos requisitos recuperados do TP-III
+
+| Requisito | Implementação |
+|---|---|
+| Mesmo problema do TP-II | Coloração mínima de grafos; `src/exact.py` |
+| Reutilização de heurística do TP-I adaptada | Busca Tabu para recoloração; `src/heuristic.py` |
+| Gerador parametrizado por N e seed documentada | G(N,p); `src/generator.py`, `data/instances.json` |
+| Cinco ou seis tamanhos crescentes | 10, 15, 20, 30, 40, 60 vértices |
+| Mesmo limite total T | 20 s por abordagem; preparação e fases contabilizadas |
+| Warm start | Coloração viável convertida em vetor completo x/y e enviada por `setSolution` |
+| Estratégia avançada | Fix-and-Optimize com janela de vértices críticos |
+| Explicar fixações e decisões livres | Menor classe e vizinhos críticos livres; demais vértices fixos |
+| Heurística, exato e híbrido | Quatro configurações principais, incluindo controle de warm start |
+| Código e gráficos comparativos | Scripts, sete gráficos, CSV/JSON e HTML |
+| Quatro perguntas experimentais | `RELATORIO.md`, slide 8 e tabelas por réplica |
 
 ## Estrutura
 
-```
-hibrido/
-├── src/
-│   ├── generator.py        # gerador parametrizado por N, com semente documentada
-│   ├── common.py           # avaliação, guloso p/w, limite de Dantzig, relógio
-│   ├── heuristic.py        # Busca Tabu (flip + swap vetorizado, aspiração, diversificação)
-│   ├── exact.py            # MIP no HiGHS: warm start (setSolution) e subproblemas com variáveis livres
-│   └── hybrid.py           # warm start + fix-and-optimize + exato com incumbente
-├── run_experiments.py      # roda tudo; gera results.csv, results.json, data/instances.json
-├── analyze.py              # gera figures/*.png, results_summary.csv, results_primal_gap.csv
-├── data/instances.json     # parâmetros do gerador e semente de cada instância
-├── figures/                # gráficos comparativos (fig1..fig6)
-├── index.html, style.css, app.js   # apresentação (slides) + tabela de resultados
-├── requirements.txt
-└── README.md
-```
-
-## Como executar
-
-```bash
-pip install -r requirements.txt
-python run_experiments.py --T 20 --reps 3     # ~17 min em 1 núcleo
-python analyze.py                              # figuras e tabelas
-# abra index.html no navegador (setas ← → navegam pelos slides)
-```
+- `src/generator.py`: geração de grafos simples e seeds.
+- `src/common.py`: DSATUR, clique gulosa, validação e avaliação.
+- `src/heuristic.py`: Busca Tabu com aspiração e diversificação.
+- `src/exact.py`: modelo inteiro de coloração com HiGHS.
+- `src/hybrid.py`: warm start, Fix-and-Optimize e MIP completo.
+- `run_experiments.py`: comparação independente e sequencial; salva após cada execução.
+- `analyze.py`: recalcula métricas, figuras, relatório e dados da apresentação.
+- `tests/test_correctness.py`: comparação com enumeração independente e verificação de fixações.
+- `data/`: 18 grafos DIMACS `.col` e descrição completa JSON.
+- `results.csv`: uma linha por execução, com status e fases.
+- `results.json`: ambiente, coloração de cada vértice, traces e logs de vizinhanças.
+- `results_metrics.csv`, `results_summary.csv`: métricas detalhadas e médias.
+- `analysis.json`, `RELATORIO.md`: respostas e comparações derivadas dos dados.
+- `index.html`, `style.css`, `app.js`, `presentation-data.js`: apresentação offline.
+- `execution.log`: saída da execução entregue.
+- `VALIDACAO.md`: verificações realizadas.
 
 ## Instâncias
 
-Fortemente correlacionadas (Pisinger): `w_i ~ U{1..R}`, `p_i = w_i + R/10`, `C = ⌊0,5·Σw⌋`, `R = 100000`.
-Semente: `seed = 2026 + 1000·réplica + N` (3 réplicas por tamanho).
+Grafo aleatório simples G(N,p), com p=0,5 fixo. Cada par não ordenado de vértices recebe uma aresta de forma independente. Não há laços ou arestas repetidas.
 
-| N | seed (réplicas 0/1/2) |
+- N ∈ {10, 15, 20, 30, 40, 60}.
+- Réplicas r ∈ {0, 1, 2}.
+- Seed = 2026 + 1000r + N.
+- NumPy `default_rng`, com versão registrada. O JSON preserva todas as arestas, permitindo reprodução independente do gerador.
+- N significa **número de vértices**. Uma cor pode representar um horário de prova.
+
+Os menores casos verificam solução e prova rápidas; os maiores investigam onde o solver deixa de provar dentro de T. Os tamanhos foram escolhidos após testes exploratórios curtos, separados dos resultados principais. A dificuldade não depende exclusivamente de N.
+
+## Modelo matemático
+
+Paleta de K cores obtida por uma coloração DSATUR viável. Como existe solução com K cores, restringir a paleta a K não exclui o ótimo.
+
+Minimizar Σc y[c], com:
+
+1. Σc x[v,c] = 1 para cada vértice v.
+2. x[u,c] + x[v,c] ≤ y[c] para cada aresta {u,v} e cor c.
+3. x[v,c] ≤ y[c] para todos os vértices, incluindo isolados.
+4. y[c] ≥ y[c+1], reduzindo a simetria entre cores.
+5. x e y binários.
+
+Adicionalmente, Σc y[c] ≥ tamanho de uma clique gulosa encontrada. Essa clique não precisa ser máxima: seus vértices são mutuamente adjacentes e exigem cores diferentes. No modelo completo, x[v,c]=0 para c>v é uma quebra de simetria segura, pois qualquer coloração pode ser renomeada pela primeira ocorrência das cores. Ela é desativada no F&O para não conflitar com as fixações.
+
+O HiGHS executa branch-and-cut, uma thread, seed interna 1, gaps relativo e absoluto iguais a zero. A prova refere-se à minimização do número de cores no modelo completo.
+
+## Busca Tabu adaptada
+
+A solução é um vetor `colors[v]`. DSATUR cria uma coloração inicial válida. Para tentar k−1 cores, a menor classe é removida e seus vértices são recoloridos, podendo criar conflitos.
+
+Um movimento muda a cor de um vértice que participa de conflitos. O custo é a mudança no total de arestas monocromáticas. O par (vértice, cor antiga) fica temporariamente tabu, com tenure adaptado ao número de vértices conflitantes e uma parcela aleatória. A aspiração aceita uma proibição quando o movimento melhora o menor número de conflitos dessa tentativa. Após estagnação, a busca reinicia a tentativa, com novos desempates e atribuições.
+
+Uma solução só vira incumbente quando tem **zero conflitos**. A heurística nunca devolve uma coloração inválida. Pode terminar cedo se a quantidade de cores alcança o limite da clique. Isso permite uma certificação combinatória externa, mas a coluna `optimal` do experimento é reservada ao status ótimo do **solver global**.
+
+## Quatro configurações e orçamento
+
+| Método | Etapas dentro de T |
 |---|---|
-| 25 | 2051 / 3051 / 4051 |
-| 50 | 2076 / 3076 / 4076 |
-| 100 | 2126 / 3126 / 4126 |
-| 200 | 2226 / 3226 / 4226 |
-| 400 | 2426 / 3426 / 4426 |
-| 800 | 2826 / 3826 / 4826 |
+| Heurística pura | Busca Tabu por até T |
+| Exato puro | Pré-processamento + MIP global por até T |
+| Exato + warm start | Tabu até 0,1T + MIP global no restante |
+| Híbrido | Tabu até 0,1T + F&O até 0,4T + MIP global no restante |
 
-(Todos os parâmetros, incluindo `C` e o limite de Dantzig, estão em `data/instances.json`.)
-Com T = 20 s, N = 25 resolve em ~0,02 s e N = 800 não fecha o gap em nenhuma réplica.
+DSATUR limita a paleta de todos os MIPs. No exato puro, essa coloração **não é enviada ao solver como incumbente**. Se o solver não devolver uma solução viável, ela é usada como saída de segurança, com `fallback=True`, sem marcar prova. O warm start usa o vetor completo x/y da solução da Tabu.
 
-## Abordagens (todas com T = 20 s de relógio)
+O tempo de construção do modelo é descontado antes de definir o `time_limit` do HiGHS. Tempo de extração e pequenos excessos internos de relógio são registrados; o máximo observado aparece no relatório. Não se força uma fase a consumir seu orçamento quando ela já terminou. Não se compartilham incumbentes ou provas entre as abordagens. As execuções são sequenciais para evitar concorrência deliberada por CPU.
 
-1. **Heurística pura** — Busca Tabu usando T inteiro.
-2. **Exato puro** — MIP no HiGHS 1.15, 1 thread, prova de ótimo (gap absoluto < 1, pois os lucros são inteiros).
-3. **Exato + warm start** — Tabu por 0,1·T, solução injetada como incumbente, exato no restante. Serve para isolar o efeito do warm start.
-4. **Híbrido** — warm start (0,1·T) → **Fix-and-Optimize** (até 0,4·T) → exato completo com o melhor incumbente.
+## Fix-and-Optimize: inteligência da seleção
 
-O tempo do warm start e do F&O está dentro de T.
+1. Selecionar a menor classe de cor e renomeá-la para a última cor. Isso permite desligar seu y sem contrariar a ordenação das cores.
+2. Liberar todos os seus vértices.
+3. Preencher a janela com vizinhos dessa classe, priorizando maior saturação e grau.
+4. Fixar x dos demais vértices na coloração corrente e otimizar Σy com HiGHS.
+5. Aceitar uma coloração válida somente se reduz cores.
 
-### Fix-and-Optimize (decisão de projeto)
+K começa em aproximadamente 40% de N, mínimo 5 e máximo N. A classe obrigatória pode ultrapassar K. Cada subproblema tem no máximo 2 s e o restante da fase. Se prova seu ótimo em menos de 1 s, K aumenta 25%; se não prova, K reduz 30%, respeitando limites. Após quatro tentativas sem melhora, o tempo restante vai ao modelo completo.
 
-- Calcula o preço-sombra λ da capacidade na relaxação linear (razão p/w do item crítico).
-- Ordena os itens por `|p_i − λ·w_i|` (custo reduzido): os menores são os "incertos" da relaxação.
-- Deixa livre uma janela de K itens desse ranking, fixa o resto no valor do incumbente e resolve o subproblema reduzido (capacidade residual) exatamente.
-- K adaptativo (×1,25 se fecha rápido; ×0,7 se estoura 2 s). A janela desliza K/2 por iteração; encerra após várias passadas sem melhora.
-- Ablação: `rc` (custo reduzido), `random` (aleatório) e `mix` (metade rc, metade aleatória).
+A ablação preserva a classe obrigatória e altera os vértices adicionais: `critical` (vizinhança, saturação, grau), `random` e `mix` (metade críticos, metade aleatórios). Aplica-se a N=30,40,60. A configuração exato + warm start permite separar o efeito da solução inicial do custo adicional do F&O.
 
-## Resultados (média de 3 réplicas)
+**Um limite dual do MIP com vértices fixados não é um limite inferior global.** Por isso os limites locais são descartados para prova e cálculo de gap do problema completo. O status ótimo do F&O é salvo apenas em `subproblem_optimal` nos logs.
 
-Ótimo provado em T = 20 s (réplicas provadas / 3):
+## Métricas corretas para minimização
 
-| N | Exato | Exato + warm | Híbrido | Heurística (gap primal, ppm) |
-|---|:--:|:--:|:--:|:--:|
-| 25 | 3/3 | 3/3 | 3/3 | 0,00 |
-| 50 | 3/3 | 3/3 | 3/3 | 0,00 |
-| 100 | 3/3 | 3/3 | 3/3 | 0,51 |
-| 200 | 3/3 | 3/3 | 3/3 | 0,05 |
-| 400 | 1/3 | 0/3 | 0/3 | 0,18 |
-| 800 | 0/3 | 0/3 | 0/3 | 0,00 |
+- UB: quantidade de cores de uma coloração válida.
+- LB: limite inferior válido, por clique ou dual do MIP **completo**.
+- LB ≤ χ(G) ≤ UB.
+- Gap próprio: 100(UB−LB)/UB.
+- Gap de certificado de referência: 100(UB−LB_ref)/UB, com LB_ref igual ao maior teto seguro dos limites globais observados naquela instância. É comparável entre métodos.
+- Excesso primal: 100(UB−melhor observado)/melhor observado. Zero não implica prova de ótimo.
+- Prova: status Optimal do modelo completo, solução validada e sem fallback.
+- Tempo total: todas as fases e preparação. Tempo de prova: apenas execuções certificadas, exibidas separadamente.
 
-O gap primal é medido contra a melhor solução conhecida na instância. Tabela completa: `results_summary.csv`; figuras em `figures/`.
-Em N = 400 e 800 o gap relativo ao limite dual é ~0,03 %, e vem do limite, não da solução.
+LB_ref e melhor observado são calculados **depois** dos experimentos, nunca usados para ajudar uma abordagem. A melhor solução observada pode continuar acima do número cromático desconhecido.
 
-Tempo médio até terminar: N ≤ 100: exato puro 0,02–0,34 s contra ~2,0–2,5 s do híbrido (o warm start fixo de 2 s domina). N = 200: exato 1,2–4,4 s contra 2,1–4,0 s do híbrido.
+## Referências e origem
 
-## Respostas às perguntas
+- Modelo e problema do TP-II do grupo: https://github.com/GabrielMarcelini/Trabalho-Pratico-II---Metodos-Exatos
+- HiGHS, projeto oficial e solver MIP: https://highs.dev/
+- API oficial Python / exemplos de callbacks: https://github.com/ERGO-Code/HiGHS/blob/master/examples/call_highs_from_python.py
+- Hertz, A.; de Werra, D. Using tabu search techniques for graph coloring. *Computing*, 39, 345–351, 1987. DOI: 10.1007/BF02239976. A implementação é uma adaptação própria da ideia TabuCol, não uma reprodução literal do artigo.
 
-1. **A partir de que tamanho o exato deixa de fechar o gap?** Entre N = 200 (3/3 provados, 1,2–4,4 s) e N = 400 (1/3, em 10,8 s). Em N = 800, 0/3.
-2. **O híbrido empurra esse limite?** Não neste experimento. Em N = 400 o híbrido provou 0/3 e o exato puro 1/3, então o ganho foi de zero tamanhos. Com 3 réplicas e um solver de 1 thread, não dá para dizer que o híbrido seja pior; a diferença de 1 réplica pode ser variabilidade do caminho de busca do HiGHS.
-3. **A heurística já iguala o híbrido?** Em qualidade de solução, sim, desde o menor tamanho: gap primal ≤ 0,51 ppm (a Tabu errou por pouco em N = 100, 200 e 400, e acertou o melhor valor conhecido nas demais). O que o híbrido acrescenta é a prova de otimalidade, e só até N = 200, onde o exato puro também prova. Em N ≥ 400 o ganho de combinar desaparece.
-4. **A estratégia acelerou o solver?**
-   - *Warm start:* sim, no sentido de que, com o incumbente ótimo, o HiGHS prova o ótimo em ~0,02 s em 2 das 3 réplicas de N = 200 (1,2 s na terceira). Mas os 2 s gastos para obter o incumbente superam o que o exato puro leva, então o tempo total não melhorou.
-   - *Fix-and-Optimize:* não fez diferença. Houve 0 a 2 melhorias por execução e mínimas (ex.: +1 unidade de lucro em N = 400); em N = 800 nenhuma. As três vizinhanças (rc, aleatório, mix) deram resultados idênticos, pois não havia melhora a encontrar.
-
-   **Nossa leitura do porquê:** (i) a mochila tem uma só restrição e a Busca Tabu já entrega solução a ≤ 0,5 ppm do ótimo, então o F&O não tem o que melhorar; (ii) o gargalo do exato nessas instâncias é o **limite dual** (árvore de B&B com poda fraca por causa da correlação forte), e F&O só melhora o limite primal; (iii) fixar variáveis não tira nada da árvore do problema completo. Esperamos ganho do F&O em problemas com muitas restrições/estrutura (multidimensional, GAP, lot-sizing), onde a heurística costuma deixar um gap primal maior.
-
-## Limitações
-
-- 1 thread, HiGHS (não Gurobi/CPLEX), T = 20 s, 3 réplicas por tamanho: resultados são indicativos, não estatisticamente conclusivos.
-- A transição 200 → 400 é abrupta e muito dependente da instância (em um teste exploratório com R = 10000 e semente 1, N = 800 fechou em ~0,3 s enquanto N = 400 estourou 20 s, ou seja, a dificuldade não é monótona em N). Outro gerador ou solver mudaria o ponto.
-- O ótimo "provado" usa gap absoluto < 1 (válido porque p é inteiro).
+As instâncias Mycielski do TP-II não são os experimentos principais deste pacote: o TP-III pede um gerador parametrizado e tamanhos crescentes. O problema e a base da formulação são os mesmos; as instâncias são novas.
